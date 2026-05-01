@@ -7,12 +7,25 @@ export const currentNetwork = signal(null)
 export const showModal = signal(null)
 export const toastMessage = signal(null)
 export const password = signal(null)
+export const balancesLoading = signal(false)
+export const prices = signal({})
 
 export const isWalletReady = computed(() => isUnlocked.value && walletData.value !== null)
 
 export const totalBalance = computed(() => {
   if (!walletData.value) return '$0.00'
-  return '$0.00'
+  const p = prices.value
+  let total = 0
+  for (const [networkId, account] of Object.entries(walletData.value.accounts)) {
+    for (const asset of account.assets) {
+      const bal = parseFloat(asset.balance || '0')
+      const price = p[asset.symbol] || 0
+      total += bal * price
+    }
+  }
+  if (total === 0) return '$0.00'
+  if (total < 0.01) return '<$0.01'
+  return '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 })
 
 export function navigate(page, data) {

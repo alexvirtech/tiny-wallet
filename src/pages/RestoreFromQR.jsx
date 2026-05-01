@@ -171,8 +171,7 @@ export function RestoreFromQR() {
     setError('')
     setLoading(true)
     try {
-      const walletData = createWalletData()
-      walletData.mnemonic = mnemonic
+      const walletData = createWalletData(mnemonic)
       await saveWallet(walletData, walletPassword)
       showToast('Wallet restored from QR! 🎉')
       unlockWallet(walletData, walletPassword)

@@ -33,8 +33,7 @@ export function RestoreWallet() {
     setError('')
     setLoading(true)
     try {
-      const walletData = createWalletData()
-      walletData.mnemonic = mnemonic.trim().toLowerCase()
+      const walletData = createWalletData(mnemonic.trim().toLowerCase())
       await saveWallet(walletData, password)
       showToast('Wallet restored! Welcome back! 🎉')
       unlockWallet(walletData, password)

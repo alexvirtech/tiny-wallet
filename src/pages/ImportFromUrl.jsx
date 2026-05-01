@@ -24,8 +24,7 @@ export function ImportFromUrl({ mnemonic }) {
     setError('')
     setLoading(true)
     try {
-      const walletData = createWalletData()
-      walletData.mnemonic = mnemonic.trim().toLowerCase()
+      const walletData = createWalletData(mnemonic.trim().toLowerCase())
       await saveWallet(walletData, password)
       showToast('Wallet imported from Wallet2QR! 🎉')
       unlockWallet(walletData, password)

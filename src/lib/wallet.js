@@ -2,6 +2,7 @@ import { encrypt, decrypt } from './crypto.js'
 import { storageSet, storageGet, storageDelete, storageClear } from './storage.js'
 import { networks } from '../data/networks.js'
 import { defaultAssets } from '../data/defaultAssets.js'
+import { deriveAddresses } from './derive.js'
 
 const WORDLIST_SIZE = 2048
 
@@ -77,13 +78,14 @@ function generateMockAddress(networkId) {
   }
 }
 
-export function createWalletData() {
-  const mnemonic = generateMockMnemonic()
+export function createWalletData(existingMnemonic) {
+  const mnemonic = existingMnemonic || generateMockMnemonic()
+  const derived = deriveAddresses(mnemonic)
   const accounts = {}
 
   for (const network of networks) {
     accounts[network.id] = {
-      address: generateMockAddress(network.id),
+      address: derived[network.id] || generateMockAddress(network.id),
       balance: '0',
       assets: (defaultAssets[network.id] || []).map(a => ({
         ...a,

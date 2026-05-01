@@ -1,12 +1,55 @@
-import { walletData, navigate, totalBalance } from '../lib/state.js'
+import { useEffect } from 'preact/hooks'
+import { walletData, navigate, totalBalance, balancesLoading, prices } from '../lib/state.js'
 import { networks } from '../data/networks.js'
+import { fetchAllBalances } from '../lib/balance.js'
 import { NetworkCard } from '../components/NetworkCard.jsx'
 import { SecurityBadge } from '../components/SecurityBadge.jsx'
 import { Header } from '../components/Header.jsx'
 
+const PRICE_API = 'https://api.coingecko.com/api/v3/simple/price'
+const PRICE_IDS = 'bitcoin,ethereum,avalanche-2,binancecoin'
+
+async function fetchPrices() {
+  try {
+    const res = await fetch(`${PRICE_API}?ids=${PRICE_IDS}&vs_currencies=usd`)
+    if (!res.ok) return
+    const data = await res.json()
+    prices.value = {
+      BTC: data.bitcoin?.usd || 0,
+      ETH: data.ethereum?.usd || 0,
+      AVAX: data['avalanche-2']?.usd || 0,
+      BNB: data.binancecoin?.usd || 0,
+    }
+  } catch {}
+}
+
+async function refreshBalances() {
+  const wallet = walletData.value
+  if (!wallet) return
+  balancesLoading.value = true
+  try {
+    const updates = await fetchAllBalances(wallet.accounts)
+    for (const [networkId, assetUpdates] of Object.entries(updates)) {
+      const account = wallet.accounts[networkId]
+      if (!account) continue
+      for (const { symbol, balance } of assetUpdates) {
+        const asset = account.assets.find(a => a.symbol === symbol)
+        if (asset) asset.balance = balance
+      }
+    }
+    walletData.value = { ...wallet }
+  } catch {}
+  balancesLoading.value = false
+}
+
 export function Dashboard() {
   const wallet = walletData.value
   if (!wallet) return null
+
+  useEffect(() => {
+    fetchPrices()
+    refreshBalances()
+  }, [])
 
   return (
     <div class="min-h-screen pb-20">
@@ -20,6 +63,9 @@ export function Dashboard() {
           <h2 class="font-fun text-5xl font-bold text-gradient-rainbow mb-3 text-shadow-fun">
             {totalBalance.value}
           </h2>
+          {balancesLoading.value && (
+            <p class="font-fun text-xs text-candy-purple/40 animate-pulse">Fetching balances...</p>
+          )}
           <SecurityBadge />
         </div>
 
