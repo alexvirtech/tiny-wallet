@@ -124,6 +124,16 @@ export function CreateWallet() {
 
               <MnemonicQR mnemonic={walletData?.mnemonic} />
 
+              <button
+                class="btn-outline-fun border-candy-blue text-candy-blue w-full text-sm"
+                onClick={() => {
+                  navigator.clipboard?.writeText(walletData?.mnemonic)
+                  showToast('Mnemonic copied! 📋')
+                }}
+              >
+                📋 Copy Mnemonic Phrase
+              </button>
+
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
