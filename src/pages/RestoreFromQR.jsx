@@ -62,6 +62,9 @@ export function RestoreFromQR() {
         video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
       })
       streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+      }
       setCameraActive(true)
     } catch {
       setError('Could not access camera. Try uploading a QR image instead.')
@@ -72,14 +75,12 @@ export function RestoreFromQR() {
     if (!cameraActive || !videoRef.current || !streamRef.current) return
 
     const video = videoRef.current
-    video.srcObject = streamRef.current
-    video.play().catch(() => {})
-
     const canvas = canvasRef.current
     if (!canvas) return
 
     scannerRef.current = setInterval(() => {
       if (video.readyState !== video.HAVE_ENOUGH_DATA) return
+      if (!video.videoWidth || !video.videoHeight) return
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
       const ctx = canvas.getContext('2d')
@@ -215,14 +216,17 @@ export function RestoreFromQR() {
         </button>
 
         <div class="card-fun">
-          {/* Hidden video + canvas — always mounted so refs work */}
+          {/* Video + canvas — always mounted, never display:none (breaks mobile playback) */}
           <video
             ref={videoRef}
-            class={cameraActive && step === 2 ? 'w-full rounded-bubble' : 'hidden'}
+            class={cameraActive && step === 2
+              ? 'w-full rounded-bubble'
+              : 'w-0 h-0 absolute overflow-hidden opacity-0'}
             playsInline
+            autoPlay
             muted
           />
-          <canvas ref={canvasRef} class="hidden" />
+          <canvas ref={canvasRef} class="w-0 h-0 absolute overflow-hidden" />
 
           {/* Step 1: Mode selection */}
           {step === 1 && (
