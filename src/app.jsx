@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'preact/hooks'
 import { currentPage } from './lib/state.js'
 import { Landing } from './pages/Landing.jsx'
 import { CreateWallet } from './pages/CreateWallet.jsx'
 import { RestoreWallet } from './pages/RestoreWallet.jsx'
 import { RestoreFromQR } from './pages/RestoreFromQR.jsx'
+import { ImportFromUrl } from './pages/ImportFromUrl.jsx'
 import { Dashboard } from './pages/Dashboard.jsx'
 import { NetworkDetail } from './pages/NetworkDetail.jsx'
 import { Send } from './pages/Send.jsx'
@@ -26,9 +28,28 @@ const pages = {
   settings: Settings,
 }
 
+function getUrlMnemonic() {
+  const params = new URLSearchParams(window.location.search)
+  const m = params.get('m')
+  if (m) {
+    window.history.replaceState(null, '', window.location.pathname)
+  }
+  return m || null
+}
+
 export function App() {
+  const [urlMnemonic] = useState(getUrlMnemonic)
   const page = currentPage.value
   const Page = pages[page] || Landing
+
+  if (urlMnemonic && page === 'landing') {
+    return (
+      <>
+        <ImportFromUrl mnemonic={urlMnemonic} />
+        <Toast />
+      </>
+    )
+  }
 
   return (
     <>
