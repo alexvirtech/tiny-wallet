@@ -2,6 +2,7 @@ import { currentPage } from './lib/state.js'
 import { Landing } from './pages/Landing.jsx'
 import { CreateWallet } from './pages/CreateWallet.jsx'
 import { RestoreWallet } from './pages/RestoreWallet.jsx'
+import { RestoreFromQR } from './pages/RestoreFromQR.jsx'
 import { Dashboard } from './pages/Dashboard.jsx'
 import { NetworkDetail } from './pages/NetworkDetail.jsx'
 import { Send } from './pages/Send.jsx'
@@ -15,6 +16,7 @@ const pages = {
   landing: Landing,
   create: CreateWallet,
   restore: RestoreWallet,
+  restoreQR: RestoreFromQR,
   dashboard: Dashboard,
   networkDetail: NetworkDetail,
   send: Send,

@@ -113,11 +113,10 @@ export function Landing() {
             </button>
 
             <button
-              class="btn-candy-orange w-full text-xl opacity-75"
-              onClick={() => {}}
+              class="btn-candy-orange w-full text-xl"
+              onClick={() => navigate('restoreQR')}
             >
               📷 Restore from QR
-              <span class="text-sm ml-1 opacity-70">(soon!)</span>
             </button>
           </div>
         )}
