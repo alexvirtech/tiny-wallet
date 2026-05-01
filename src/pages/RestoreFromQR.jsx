@@ -62,10 +62,8 @@ export function RestoreFromQR() {
         video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
       })
       streamRef.current = stream
-      const video = videoRef.current
-      if (video) {
-        video.srcObject = stream
-        await video.play()
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
       }
       setCameraActive(true)
     } catch {
@@ -77,6 +75,10 @@ export function RestoreFromQR() {
     if (!cameraActive || !videoRef.current) return
 
     const video = videoRef.current
+    if (video.paused) {
+      video.play().catch(() => {})
+    }
+
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -218,16 +220,17 @@ export function RestoreFromQR() {
         </button>
 
         <div class="card-fun">
-          {/* Video + canvas — always in DOM; offscreen when inactive (display:none / zero-size break mobile playback) */}
+          {/* Video always in DOM — opacity-0 when inactive (display:none and zero-size break mobile) */}
           <video
             ref={videoRef}
             class={cameraActive && step === 2
               ? 'w-full rounded-bubble'
-              : 'fixed -left-[9999px] -top-[9999px] w-px h-px'}
+              : 'absolute w-full opacity-0 pointer-events-none -z-50'}
             playsInline
+            autoPlay
             muted
           />
-          <canvas ref={canvasRef} class="fixed -left-[9999px] -top-[9999px]" />
+          <canvas ref={canvasRef} class="absolute opacity-0 pointer-events-none -z-50" />
 
           {/* Step 1: Mode selection */}
           {step === 1 && (
