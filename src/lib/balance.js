@@ -15,17 +15,20 @@ async function jsonRpc(url, method, params) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
   })
+  if (!res.ok) throw new Error(`RPC ${res.status}`)
   const data = await res.json()
   if (data.error) throw new Error(data.error.message)
   return data.result
 }
 
-function hexToDecimal(hex, decimals) {
+function weiToDecimal(hex, decimals) {
   const raw = BigInt(hex || '0x0')
-  const divisor = BigInt(10 ** decimals)
+  if (raw === 0n) return '0'
+  const divisor = 10n ** BigInt(decimals)
   const intPart = raw / divisor
   const fracPart = raw % divisor
-  const fracStr = fracPart.toString().padStart(decimals, '0')
+  if (fracPart === 0n) return intPart.toString()
+  const fracStr = fracPart.toString().padStart(decimals, '0').replace(/0+$/, '')
   return `${intPart}.${fracStr}`
 }
 
@@ -34,8 +37,9 @@ async function fetchEvmNativeBalance(networkId, address) {
   if (!rpc || !address) return '0'
   try {
     const hex = await jsonRpc(rpc, 'eth_getBalance', [address, 'latest'])
-    return hexToDecimal(hex, 18)
-  } catch {
+    return weiToDecimal(hex, 18)
+  } catch (e) {
+    console.warn(`[balance] ${networkId} native failed:`, e.message)
     return '0'
   }
 }
@@ -46,8 +50,9 @@ async function fetchErc20Balance(networkId, tokenContract, address, decimals) {
   try {
     const data = ERC20_BALANCE_SIG + address.slice(2).toLowerCase().padStart(64, '0')
     const hex = await jsonRpc(rpc, 'eth_call', [{ to: tokenContract, data }, 'latest'])
-    return hexToDecimal(hex, decimals)
-  } catch {
+    return weiToDecimal(hex, decimals)
+  } catch (e) {
+    console.warn(`[balance] ${networkId} ERC20 ${tokenContract} failed:`, e.message)
     return '0'
   }
 }
@@ -56,12 +61,15 @@ async function fetchBtcBalance(address) {
   if (!address) return '0'
   try {
     const res = await fetch(`${MEMPOOL_API}/address/${address}`)
-    if (!res.ok) return '0'
+    if (!res.ok) throw new Error(`mempool ${res.status}`)
     const data = await res.json()
-    const confirmed = data.chain_stats?.funded_txo_sum - data.chain_stats?.spent_txo_sum
-    if (!confirmed || confirmed <= 0) return '0'
-    return (confirmed / 1e8).toString()
-  } catch {
+    const confirmed = (data.chain_stats?.funded_txo_sum || 0) - (data.chain_stats?.spent_txo_sum || 0)
+    const unconfirmed = (data.mempool_stats?.funded_txo_sum || 0) - (data.mempool_stats?.spent_txo_sum || 0)
+    const total = confirmed + unconfirmed
+    if (total <= 0) return '0'
+    return (total / 1e8).toString()
+  } catch (e) {
+    console.warn('[balance] BTC failed:', e.message)
     return '0'
   }
 }
@@ -95,5 +103,6 @@ export async function fetchAllBalances(accounts) {
   })
 
   await Promise.all(promises)
+  console.log('[balance] fetch complete, updates:', JSON.stringify(updates).slice(0, 500))
   return updates
 }

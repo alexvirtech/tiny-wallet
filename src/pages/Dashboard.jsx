@@ -27,6 +27,12 @@ async function refreshBalances() {
   const wallet = walletData.value
   if (!wallet) return
   balancesLoading.value = true
+
+  const addrSummary = Object.entries(wallet.accounts)
+    .filter(([, a]) => a.address)
+    .map(([id, a]) => `${id}: ${a.address}`)
+  console.log('[dashboard] refreshing balances for:', addrSummary)
+
   try {
     const updates = await fetchAllBalances(wallet.accounts)
     for (const [networkId, assetUpdates] of Object.entries(updates)) {
@@ -38,7 +44,9 @@ async function refreshBalances() {
       }
     }
     walletData.value = { ...wallet }
-  } catch {}
+  } catch (e) {
+    console.error('[dashboard] balance fetch error:', e)
+  }
   balancesLoading.value = false
 }
 
