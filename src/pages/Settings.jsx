@@ -4,6 +4,7 @@ import { saveWallet, deleteWallet, exportEncryptedBackup } from '../lib/wallet.j
 import { Header } from '../components/Header.jsx'
 import { Warning } from '../components/Warning.jsx'
 import { Modal } from '../components/Modal.jsx'
+import { MnemonicQR } from '../components/MnemonicQR.jsx'
 
 export function Settings() {
   const wallet = walletData.value
@@ -221,6 +222,7 @@ export function Settings() {
                     </div>
                   ))}
                 </div>
+                <MnemonicQR mnemonic={wallet.mnemonic} />
               </div>
             )}
           </Modal>

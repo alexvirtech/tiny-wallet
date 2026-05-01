@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks'
 import { navigate, unlockWallet, showToast } from '../lib/state.js'
 import { createWalletData, saveWallet } from '../lib/wallet.js'
 import { Warning } from '../components/Warning.jsx'
+import { MnemonicQR } from '../components/MnemonicQR.jsx'
 
 export function CreateWallet() {
   const [step, setStep] = useState(1)
@@ -120,6 +121,8 @@ export function CreateWallet() {
                   </div>
                 ))}
               </div>
+
+              <MnemonicQR mnemonic={walletData?.mnemonic} />
 
               <label class="flex items-center gap-2 cursor-pointer">
                 <input

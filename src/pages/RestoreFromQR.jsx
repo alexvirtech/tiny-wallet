@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'preact/hooks'
 import { navigate, unlockWallet, showToast } from '../lib/state.js'
 import { createWalletData, saveWallet } from '../lib/wallet.js'
-import { decrypt } from '../lib/crypto.js'
+import { parseQrData, decryptQrPayload, extractMnemonic } from '../lib/wallet2qr.js'
 import { Warning } from '../components/Warning.jsx'
 import jsQR from 'jsqr'
 
@@ -135,31 +135,25 @@ export function RestoreFromQR() {
     setLoading(true)
     setError('')
     try {
-      const decrypted = await decrypt(scannedData, qrPassword)
+      const envelope = parseQrData(scannedData)
+      const decrypted = decryptQrPayload(envelope, qrPassword)
 
-      let mnemonicResult = null
-      try {
-        const parsed = JSON.parse(decrypted)
-        if (parsed.mnemonic) mnemonicResult = parsed.mnemonic
-      } catch {
-        // not JSON — treat as plain text
+      if (!decrypted) {
+        setError('Wrong password or unrecognized QR format.')
+        setLoading(false)
+        return
       }
 
-      if (!mnemonicResult) {
-        const words = decrypted.trim().split(/\s+/)
-        if (words.length === 12 || words.length === 24) {
-          mnemonicResult = decrypted.trim()
-        }
-      }
+      const mnemonicResult = extractMnemonic(decrypted)
 
       if (mnemonicResult) {
         setMnemonic(mnemonicResult)
         setStep(4)
       } else {
-        setError('Decrypted data does not contain a valid mnemonic.')
+        setError('Decrypted data does not contain a valid mnemonic (expected 12 or 24 words).')
       }
     } catch {
-      setError('Wrong password or invalid encrypted data.')
+      setError('Decryption failed. Check your password and QR code.')
     } finally {
       setLoading(false)
     }
