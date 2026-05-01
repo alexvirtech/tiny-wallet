@@ -4,6 +4,7 @@ import { networks, getNetwork } from '../data/networks.js'
 import { Header } from '../components/Header.jsx'
 import { Warning } from '../components/Warning.jsx'
 import { CryptoIcon } from '../components/CryptoIcon.jsx'
+import { AddressQR } from '../components/AddressQR.jsx'
 
 export function Receive() {
   const wallet = walletData.value
@@ -82,13 +83,9 @@ export function Receive() {
                   class="rounded-bubble p-6 text-center"
                   style={{ backgroundColor: network.bgColor }}
                 >
-                  <div class="w-40 h-40 bg-white rounded-bubble border-3 border-dashed mx-auto mb-4 flex items-center justify-center"
-                    style={{ borderColor: network.color + '50' }}
-                  >
-                    <div class="text-center">
-                      <CryptoIcon symbol={network.symbol} networkId={network.id} size={48} class="mx-auto" />
-                      <p class="font-body text-xs text-gray-400 mt-1">QR Code</p>
-                    </div>
+                  <div class="mx-auto mb-4 flex flex-col items-center">
+                    <AddressQR address={account.address} color={network.color} size={180} />
+                    <p class="font-fun text-xs text-gray-400 mt-2">Scan to send to this address</p>
                   </div>
 
                   <div class="bg-white rounded-bubble p-4 mb-4">

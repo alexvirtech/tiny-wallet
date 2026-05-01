@@ -6,6 +6,7 @@ import { AssetList } from '../components/AssetList.jsx'
 import { CryptoIcon } from '../components/CryptoIcon.jsx'
 import { DerivationPathTool } from '../components/DerivationPathTool.jsx'
 import { AddAsset } from '../components/AddAsset.jsx'
+import { AddressQR } from '../components/AddressQR.jsx'
 
 export function NetworkDetail() {
   const wallet = walletData.value
@@ -55,13 +56,11 @@ export function NetworkDetail() {
             <p class="font-mono text-sm break-all text-gray-700">{account.address}</p>
           </div>
 
-          <div class="mb-4 bg-gray-100 rounded-bubble p-6 flex items-center justify-center">
-            <div class="text-center">
-              <div class="w-32 h-32 bg-white rounded-bubble border-2 border-dashed border-gray-300 flex items-center justify-center mx-auto mb-2">
-                <span class="text-4xl">📱</span>
-              </div>
-              <p class="font-body text-xs text-gray-400">QR Code placeholder</p>
-            </div>
+          <div class="mb-4 rounded-bubble p-4 flex flex-col items-center"
+            style={{ backgroundColor: network.bgColor }}
+          >
+            <AddressQR address={account.address} color={network.color} size={160} />
+            <p class="font-fun text-xs text-gray-400 mt-2">Scan to send to this address</p>
           </div>
 
           <div class="flex flex-wrap gap-2">
