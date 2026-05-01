@@ -1,4 +1,5 @@
 import { navigate } from '../lib/state.js'
+import { CryptoIcon } from './CryptoIcon.jsx'
 
 export function NetworkCard({ network, account }) {
   const nativeAsset = account.assets.find(a => a.native)
@@ -19,7 +20,7 @@ export function NetworkCard({ network, account }) {
       <div class="absolute top-0 left-0 right-0 h-1.5 rounded-t-blob" style={{ background: network.color }} />
 
       <div class="flex items-center gap-3 mb-3 mt-1">
-        <span class="text-4xl group-hover:animate-wiggle sticker">{network.emoji}</span>
+        <CryptoIcon symbol={network.symbol} networkId={network.id} size={40} class="group-hover:animate-wiggle" />
         <div>
           <h3 class="font-fun font-bold text-xl" style={{ color: network.color }}>
             {network.name}

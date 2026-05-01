@@ -1,3 +1,5 @@
+import { CryptoIcon } from './CryptoIcon.jsx'
+
 export function AssetList({ assets, network, onAssetClick }) {
   return (
     <div class="space-y-2">
@@ -10,12 +12,7 @@ export function AssetList({ assets, network, onAssetClick }) {
           onClick={() => onAssetClick?.(asset)}
         >
           <div class="flex items-center gap-3">
-            <div
-              class="w-10 h-10 rounded-full flex items-center justify-center font-fun font-bold text-sm text-white"
-              style={{ backgroundColor: network.color }}
-            >
-              {asset.symbol.slice(0, 2)}
-            </div>
+            <CryptoIcon symbol={asset.symbol} size={40} />
             <div>
               <p class="font-fun font-semibold text-sm">{asset.symbol}</p>
               <p class="font-body text-xs text-gray-400">{asset.name}</p>

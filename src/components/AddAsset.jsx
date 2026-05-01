@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks'
 import { showToast } from '../lib/state.js'
 import { Warning } from './Warning.jsx'
+import { CryptoIcon } from './CryptoIcon.jsx'
 
 export function AddAsset({ network, account }) {
   const [contract, setContract] = useState('')
@@ -24,7 +25,7 @@ export function AddAsset({ network, account }) {
     return (
       <div class="card-fun space-y-4">
         <div class="text-center">
-          <span class="text-4xl block mb-2">{network.emoji}</span>
+          <CryptoIcon symbol={network.symbol} networkId={network.id} size={40} class="mx-auto mb-2" />
           <h3 class="font-fun text-lg font-semibold">{network.name} is a native-coin network</h3>
           <p class="font-body text-sm text-gray-500 mt-2">
             In this MVP, {network.name} only supports its native {network.symbol} coin.

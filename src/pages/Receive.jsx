@@ -3,6 +3,7 @@ import { walletData, navigate, currentNetwork, showToast } from '../lib/state.js
 import { networks, getNetwork } from '../data/networks.js'
 import { Header } from '../components/Header.jsx'
 import { Warning } from '../components/Warning.jsx'
+import { CryptoIcon } from '../components/CryptoIcon.jsx'
 
 export function Receive() {
   const wallet = walletData.value
@@ -85,7 +86,7 @@ export function Receive() {
                     style={{ borderColor: network.color + '50' }}
                   >
                     <div class="text-center">
-                      <span class="text-5xl block">{network.emoji}</span>
+                      <CryptoIcon symbol={network.symbol} networkId={network.id} size={48} class="mx-auto" />
                       <p class="font-body text-xs text-gray-400 mt-1">QR Code</p>
                     </div>
                   </div>

@@ -3,6 +3,7 @@ import { walletData, navigate, currentNetwork, showToast } from '../lib/state.js
 import { getNetwork } from '../data/networks.js'
 import { Header } from '../components/Header.jsx'
 import { AssetList } from '../components/AssetList.jsx'
+import { CryptoIcon } from '../components/CryptoIcon.jsx'
 import { DerivationPathTool } from '../components/DerivationPathTool.jsx'
 import { AddAsset } from '../components/AddAsset.jsx'
 
@@ -38,7 +39,7 @@ export function NetworkDetail() {
           style={{ borderColor: network.color + '50' }}
         >
           <div class="flex items-center gap-4 mb-4">
-            <span class="text-5xl">{network.emoji}</span>
+            <CryptoIcon symbol={network.symbol} networkId={network.id} size={48} />
             <div>
               <h2 class="font-fun text-2xl font-bold" style={{ color: network.color }}>
                 {network.name}

@@ -5,6 +5,7 @@ import { walletPresets } from '../data/defaultAssets.js'
 import { generateMockAddress } from '../lib/wallet.js'
 import { Header } from '../components/Header.jsx'
 import { Warning } from '../components/Warning.jsx'
+import { CryptoIcon } from '../components/CryptoIcon.jsx'
 
 export function FindFunds() {
   const [step, setStep] = useState(1)
@@ -80,7 +81,7 @@ export function FindFunds() {
                     } : {}}
                     onClick={() => toggleNetwork(n.id)}
                   >
-                    <span class="text-xl mr-2">{n.emoji}</span>
+                    <CryptoIcon symbol={n.symbol} networkId={n.id} size={24} class="mr-2 inline-block" />
                     <span class="font-fun text-sm font-semibold">{n.name}</span>
                   </button>
                 ))}
@@ -180,8 +181,8 @@ export function FindFunds() {
 
               {results.map(r => (
                 <div key={r.network.id} class="space-y-2">
-                  <h4 class="font-fun font-semibold text-sm flex items-center gap-1">
-                    {r.network.emoji} {r.network.name}
+                  <h4 class="font-fun font-semibold text-sm flex items-center gap-1.5">
+                    <CryptoIcon symbol={r.network.symbol} networkId={r.network.id} size={20} /> {r.network.name}
                   </h4>
                   {r.addresses.map(addr => (
                     <div

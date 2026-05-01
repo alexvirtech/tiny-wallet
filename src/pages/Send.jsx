@@ -4,6 +4,7 @@ import { networks, getNetwork } from '../data/networks.js'
 import { Header } from '../components/Header.jsx'
 import { Warning } from '../components/Warning.jsx'
 import { Modal } from '../components/Modal.jsx'
+import { CryptoIcon } from '../components/CryptoIcon.jsx'
 
 export function Send() {
   const wallet = walletData.value
@@ -111,10 +112,10 @@ export function Send() {
               <div class="animate-pop">
                 {network && (
                   <div
-                    class="mb-3 px-3 py-2 rounded-bubble text-sm font-fun text-center"
+                    class="mb-3 px-3 py-2 rounded-bubble text-sm font-fun flex items-center justify-center gap-1.5"
                     style={{ backgroundColor: network.color + '15', color: network.color }}
                   >
-                    Sending on {network.emoji} {network.name}
+                    Sending on <CryptoIcon symbol={network.symbol} networkId={network.id} size={20} /> {network.name}
                   </div>
                 )}
 
@@ -207,7 +208,7 @@ export function Send() {
               <div class="bg-gray-50 rounded-bubble p-4 space-y-2">
                 <div class="flex justify-between font-fun text-sm">
                   <span class="text-gray-400">Network</span>
-                  <span>{network?.emoji} {network?.name}</span>
+                  <span class="flex items-center gap-1.5"><CryptoIcon symbol={network?.symbol} networkId={network?.id} size={18} /> {network?.name}</span>
                 </div>
                 <div class="flex justify-between font-fun text-sm">
                   <span class="text-gray-400">Asset</span>
