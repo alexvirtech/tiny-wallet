@@ -62,8 +62,10 @@ export function RestoreFromQR() {
         video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
       })
       streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
+      const video = videoRef.current
+      if (video) {
+        video.srcObject = stream
+        await video.play()
       }
       setCameraActive(true)
     } catch {
@@ -72,7 +74,7 @@ export function RestoreFromQR() {
   }
 
   useEffect(() => {
-    if (!cameraActive || !videoRef.current || !streamRef.current) return
+    if (!cameraActive || !videoRef.current) return
 
     const video = videoRef.current
     const canvas = canvasRef.current
@@ -216,17 +218,16 @@ export function RestoreFromQR() {
         </button>
 
         <div class="card-fun">
-          {/* Video + canvas — always mounted, never display:none (breaks mobile playback) */}
+          {/* Video + canvas — always in DOM; offscreen when inactive (display:none / zero-size break mobile playback) */}
           <video
             ref={videoRef}
             class={cameraActive && step === 2
               ? 'w-full rounded-bubble'
-              : 'w-0 h-0 absolute overflow-hidden opacity-0'}
+              : 'fixed -left-[9999px] -top-[9999px] w-px h-px'}
             playsInline
-            autoPlay
             muted
           />
-          <canvas ref={canvasRef} class="w-0 h-0 absolute overflow-hidden" />
+          <canvas ref={canvasRef} class="fixed -left-[9999px] -top-[9999px]" />
 
           {/* Step 1: Mode selection */}
           {step === 1 && (
@@ -298,14 +299,9 @@ export function RestoreFromQR() {
               )}
 
               {cameraActive && (
-                <div class="relative rounded-bubble overflow-hidden bg-black">
-                  <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                    <div class="w-48 h-48 border-3 border-white/50 rounded-bubble" />
-                  </div>
-                  <p class="absolute bottom-2 left-0 right-0 text-center font-fun text-xs text-white/70 z-10">
-                    Point camera at QR code...
-                  </p>
-                </div>
+                <p class="font-fun text-sm text-gray-400 text-center animate-pulse">
+                  Point camera at QR code...
+                </p>
               )}
 
               {!cameraActive && (
