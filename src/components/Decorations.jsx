@@ -28,9 +28,9 @@ export function Decorations() {
       <CuteCoin symbol="◆" bg="#9945FF" fg="#D4B0FF" x="90%" y="30%" size={40} delay="0.6s" rotate={15} />
       <CuteCoin symbol="Ð" bg="#C2A633" fg="#F5E6A3" x="2%" y="50%" size={52} delay="1.8s" rotate={-12} />
       <CuteCoin symbol="◈" bg="#E84142" fg="#F7B4B4" x="88%" y="55%" size={44} delay="0.4s" rotate={20} />
-      <CuteCoin symbol="$" bg="#4E7A25" fg="#B5D99C" x="6%" y="75%" size={46} delay="1.6s" rotate={-5} />
-      <CuteCoin symbol="₿" bg="#F3BA2F" fg="#FBE5A0" x="82%" y="78%" size={38} delay="0.9s" rotate={10} />
-      <CuteCoin symbol="Ξ" bg="#28A0F0" fg="#A8DAF7" x="12%" y="38%" size={36} delay="2.2s" rotate={-18} />
+      <CuteCoin symbol="Ł" bg="#345D9D" fg="#A8C4E8" x="6%" y="75%" size={46} delay="1.6s" rotate={-5} />
+      <CuteCoin symbol="◇" bg="#F3BA2F" fg="#FBE5A0" x="82%" y="78%" size={38} delay="0.9s" rotate={10} />
+      <CuteCoin symbol="₳" bg="#0033AD" fg="#99B3E6" x="12%" y="38%" size={36} delay="2.2s" rotate={-18} />
 
       <div class="absolute top-0 left-0 w-full h-2"
         style="background: linear-gradient(90deg, #FF6B9D, #FFD93D, #44E55A, #4DA6FF, #C44DFF, #FF6B9D)" />
