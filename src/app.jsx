@@ -13,6 +13,7 @@ import { Swap } from './pages/Swap.jsx'
 import { FindFunds } from './pages/FindFunds.jsx'
 import { Settings } from './pages/Settings.jsx'
 import { Toast } from './components/Toast.jsx'
+import { Decorations } from './components/Decorations.jsx'
 
 const pages = {
   landing: Landing,
@@ -45,6 +46,7 @@ export function App() {
   if (urlMnemonic && page === 'landing') {
     return (
       <>
+        <Decorations />
         <ImportFromUrl mnemonic={urlMnemonic} />
         <Toast />
       </>
@@ -53,6 +55,7 @@ export function App() {
 
   return (
     <>
+      <Decorations />
       <Page />
       <Toast />
     </>
