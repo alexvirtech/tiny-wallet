@@ -5,19 +5,17 @@ import { Warning } from '../components/Warning.jsx'
 import { CryptoIcon } from '../components/CryptoIcon.jsx'
 import { AddressQR } from '../components/AddressQR.jsx'
 import {
-  SWAP_PAIRS, LIMITS, TERMINAL_STATUSES, STATUS_LABELS,
+  SWAP_ASSETS, TERMINAL_STATUSES, STATUS_LABELS,
+  getAsset, getChainColor,
   getQuotes, createSwap, getSwapStatus,
 } from '../lib/cross2chain.js'
 
-const DIRECTIONS = [
-  { key: 'BTC_TO_ETH', label: 'BTC → ETH', from: 'BTC', to: 'ETH', color: '#F7931A' },
-  { key: 'ETH_TO_BTC', label: 'ETH → BTC', from: 'ETH', to: 'BTC', color: '#627EEA' },
-]
-
 export function Swap() {
   const wallet = walletData.value
-  const [direction, setDirection] = useState('BTC_TO_ETH')
+  const [fromId, setFromId] = useState('BTC.BTC')
+  const [toId, setToId] = useState('ETH.ETH')
   const [amount, setAmount] = useState('')
+  const [picking, setPicking] = useState(null)
   const [quote, setQuote] = useState(null)
   const [swap, setSwap] = useState(null)
   const [status, setStatus] = useState(null)
@@ -25,23 +23,37 @@ export function Swap() {
   const [error, setError] = useState('')
   const pollerRef = useRef(null)
 
-  const dir = DIRECTIONS.find(d => d.key === direction)
-  const pair = SWAP_PAIRS[direction]
-  const limits = LIMITS[dir.from]
+  const fromAsset = getAsset(fromId)
+  const toAsset = getAsset(toId)
 
   useEffect(() => {
-    return () => {
-      if (pollerRef.current) clearInterval(pollerRef.current)
-    }
+    return () => { if (pollerRef.current) clearInterval(pollerRef.current) }
   }, [])
 
   if (!wallet) return null
 
-  const fromAddr = wallet.accounts[pair.fromNetwork]?.address
-  const toAddr = wallet.accounts[pair.toNetwork]?.address
+  const fromAddr = wallet.accounts[fromAsset.networkId]?.address
+  const toAddr = wallet.accounts[toAsset.networkId]?.address
 
-  const amountNum = parseFloat(amount)
-  const amountValid = amount && !isNaN(amountNum) && amountNum >= limits.min && amountNum <= limits.max
+  const handlePick = (side, assetId) => {
+    if (side === 'from') {
+      if (assetId === toId) setToId(fromId)
+      setFromId(assetId)
+    } else {
+      if (assetId === fromId) setFromId(toId)
+      setToId(assetId)
+    }
+    setPicking(null)
+    setQuote(null)
+    setError('')
+  }
+
+  const handleFlip = () => {
+    setFromId(toId)
+    setToId(fromId)
+    setQuote(null)
+    setError('')
+  }
 
   const handleGetQuote = async () => {
     setError('')
@@ -49,13 +61,17 @@ export function Swap() {
     setLoading(true)
     try {
       const data = await getQuotes({
-        fromAsset: pair.fromAsset,
-        toAsset: pair.toAsset,
+        fromAsset: fromId,
+        toAsset: toId,
         amount,
         destinationAddress: toAddr,
         refundAddress: fromAddr,
       })
-      setQuote(data)
+      if (data.errors?.length) {
+        setError(data.errors.join('. '))
+      } else {
+        setQuote(data)
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -83,28 +99,18 @@ export function Swap() {
     if (pollerRef.current) clearInterval(pollerRef.current)
     pollerRef.current = setInterval(async () => {
       try {
-        const data = await getSwapStatus(swapId)
-        setStatus(data.status)
-        if (data.destinationTxHash) {
-          setSwap(prev => ({ ...prev, destinationTxHash: data.destinationTxHash }))
-        }
-        if (data.refundTxHash) {
-          setSwap(prev => ({ ...prev, refundTxHash: data.refundTxHash }))
-        }
-        if (data.actualOutput) {
-          setSwap(prev => ({ ...prev, actualOutput: data.actualOutput }))
-        }
-        if (TERMINAL_STATUSES.includes(data.status)) {
+        const s = await getSwapStatus(swapId)
+        setStatus(s.status)
+        setSwap(prev => ({ ...prev, ...s }))
+        if (TERMINAL_STATUSES.includes(s.status)) {
           clearInterval(pollerRef.current)
           pollerRef.current = null
-          if (data.status === 'completed') showToast('Swap completed! 🎉')
-          if (data.status === 'refunded') showToast('Swap refunded')
-          if (data.status === 'failed') showToast('Swap failed')
+          if (s.status === 'completed') showToast('Swap completed! 🎉')
+          if (s.status === 'refunded') showToast('Swap refunded')
+          if (s.status === 'failed') showToast('Swap failed')
         }
-      } catch {
-        // polling error, keep trying
-      }
-    }, 20000)
+      } catch { /* keep polling */ }
+    }, 10000)
   }
 
   const resetSwap = () => {
@@ -116,10 +122,64 @@ export function Swap() {
     setError('')
   }
 
-  // Active swap — show deposit instructions and status
+  // --- Asset picker modal ---
+  if (picking) {
+    const exclude = picking === 'from' ? toId : fromId
+    return (
+      <div class="min-h-screen pb-20">
+        <Header />
+        <div class="page-container">
+          <button
+            class="font-fun text-sm text-gray-400 hover:text-gray-600 mb-4 flex items-center gap-1"
+            onClick={() => setPicking(null)}
+          >
+            ← Back
+          </button>
+          <div class="card-fun max-w-lg mx-auto animate-pop">
+            <h2 class="font-fun text-xl font-bold text-gradient-fun text-center mb-4">
+              Select {picking === 'from' ? 'Source' : 'Destination'} Asset
+            </h2>
+            <div class="space-y-1">
+              {SWAP_ASSETS.map(a => {
+                const selected = picking === 'from' ? fromId === a.id : toId === a.id
+                return (
+                  <button
+                    key={a.id}
+                    class={`w-full flex items-center gap-3 p-3 rounded-bubble transition-all ${
+                      selected
+                        ? 'bg-candy-purple/10 border-2 border-candy-purple'
+                        : a.id === exclude
+                          ? 'opacity-30 cursor-not-allowed'
+                          : 'hover:bg-gray-50 border-2 border-transparent'
+                    }`}
+                    onClick={() => a.id !== exclude && handlePick(picking, a.id)}
+                    disabled={a.id === exclude}
+                  >
+                    <CryptoIcon symbol={a.symbol} networkId={a.networkId} size={28} />
+                    <div class="text-left flex-1">
+                      <span class="font-fun font-bold text-sm">{a.symbol}</span>
+                      <span class="font-body text-xs text-gray-400 ml-2">{a.name}</span>
+                    </div>
+                    <span
+                      class="font-fun text-xs px-2 py-0.5 rounded-full text-white"
+                      style={{ backgroundColor: getChainColor(a.chain) }}
+                    >
+                      {a.chain}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // --- Active swap: deposit instructions + status ---
   if (swap) {
     const isTerminal = TERMINAL_STATUSES.includes(status)
-    const isBtcToEth = direction === 'BTC_TO_ETH'
+    const hasMemo = swap.memo && swap.requiresMemo !== false
 
     return (
       <div class="min-h-screen pb-20">
@@ -141,13 +201,13 @@ export function Swap() {
               <div class="space-y-4 mt-4">
                 <Warning
                   type="warning"
-                  title={`Send ${swap.sourceAmount} ${dir.from}`}
-                  message={`Send exactly ${swap.sourceAmount} ${dir.from} to the deposit address below. Do NOT close this page.`}
+                  title={`Send ${swap.sourceAmount} ${fromAsset.symbol}`}
+                  message={`Send exactly ${swap.sourceAmount} ${fromAsset.symbol} (${fromAsset.chain}) to the deposit address below. Do NOT close this page.`}
                 />
 
                 <div class="bg-gray-50 rounded-bubble p-4 text-center">
                   <p class="font-fun text-xs text-gray-400 mb-2">Deposit Address</p>
-                  <AddressQR address={swap.depositAddress} color={dir.color} size={160} />
+                  <AddressQR address={swap.depositAddress} color={getChainColor(fromAsset.chain)} size={160} />
                   <p class="font-mono text-xs break-all text-gray-700 mt-3">{swap.depositAddress}</p>
                   <button
                     class="font-fun text-xs text-candy-blue mt-2 underline"
@@ -160,10 +220,10 @@ export function Swap() {
                   </button>
                 </div>
 
-                {isBtcToEth && swap.memo && (
+                {hasMemo && (
                   <div class="bg-orange-50 rounded-bubble p-4 border-2 border-dashed border-orange-300">
                     <p class="font-fun text-xs text-orange-600 font-bold mb-1">
-                      OP_RETURN Memo (REQUIRED)
+                      Memo (REQUIRED)
                     </p>
                     <p class="font-mono text-xs break-all text-gray-700">{swap.memo}</p>
                     <button
@@ -177,12 +237,12 @@ export function Swap() {
                     </button>
                     <Warning
                       type="danger"
-                      message="You MUST include this memo as an OP_RETURN output in your BTC transaction. Without it, the swap cannot complete and funds will be refunded minus fees."
+                      message="You MUST include this memo in your transaction. Without it, the swap cannot complete and funds may be lost."
                     />
                   </div>
                 )}
 
-                {swap.recommendedGasRate && isBtcToEth && (
+                {swap.recommendedGasRate && fromAsset.networkId === 'bitcoin' && (
                   <p class="font-body text-xs text-gray-400 text-center">
                     Recommended fee rate: {swap.recommendedGasRate} sat/vbyte
                   </p>
@@ -196,7 +256,9 @@ export function Swap() {
                   <div class="bg-green-50 rounded-bubble p-4 space-y-2">
                     <div class="flex justify-between font-fun text-sm">
                       <span class="text-gray-400">Received</span>
-                      <span class="text-green-600 font-bold">{swap.actualOutput || swap.expectedOutput} {dir.to}</span>
+                      <span class="text-green-600 font-bold">
+                        {swap.actualOutput || swap.expectedOutput} {toAsset.symbol}
+                      </span>
                     </div>
                     {swap.destinationTxHash && (
                       <div class="flex justify-between font-fun text-xs">
@@ -206,14 +268,16 @@ export function Swap() {
                     )}
                   </div>
                 )}
-                {status === 'refunded' && swap.refundTxHash && (
+                {status === 'refunded' && (
                   <div class="bg-yellow-50 rounded-bubble p-4">
-                    <p class="font-fun text-sm text-yellow-700">Funds returned to your {dir.from} address</p>
-                    <p class="font-mono text-xs text-gray-500 mt-1 break-all">{swap.refundTxHash}</p>
+                    <p class="font-fun text-sm text-yellow-700">Funds returned to your {fromAsset.symbol} address</p>
+                    {swap.refundTxHash && (
+                      <p class="font-mono text-xs text-gray-500 mt-1 break-all">{swap.refundTxHash}</p>
+                    )}
                   </div>
                 )}
                 {status === 'failed' && (
-                  <Warning type="danger" message="The swap failed. Your funds may be refunded automatically. If not, contact the provider." />
+                  <Warning type="danger" message="The swap failed. Your funds may be refunded automatically." />
                 )}
                 <button class="btn-candy-purple w-full" onClick={resetSwap}>
                   Start New Swap
@@ -228,30 +292,10 @@ export function Swap() {
             )}
 
             <div class="mt-4 bg-gray-50 rounded-bubble p-3 space-y-1">
-              <div class="flex justify-between font-fun text-xs">
-                <span class="text-gray-400">Direction</span>
-                <span>{dir.label}</span>
-              </div>
-              <div class="flex justify-between font-fun text-xs">
-                <span class="text-gray-400">Amount</span>
-                <span>{swap.sourceAmount} {dir.from}</span>
-              </div>
-              <div class="flex justify-between font-fun text-xs">
-                <span class="text-gray-400">Expected</span>
-                <span>{swap.expectedOutput} {dir.to}</span>
-              </div>
-              <div class="flex justify-between font-fun text-xs">
-                <span class="text-gray-400">Status</span>
-                <span>{STATUS_LABELS[status] || status}</span>
-              </div>
-              {swap.protectionScore != null && (
-                <div class="flex justify-between font-fun text-xs">
-                  <span class="text-gray-400">Safety</span>
-                  <span class={swap.protectionScore >= 50 ? 'text-green-600' : 'text-red-500'}>
-                    {swap.protectionScore}/100
-                  </span>
-                </div>
-              )}
+              <Row label="Direction" value={`${fromAsset.symbol} (${fromAsset.chain}) → ${toAsset.symbol} (${toAsset.chain})`} />
+              <Row label="Amount" value={`${swap.sourceAmount} ${fromAsset.symbol}`} />
+              <Row label="Expected" value={`${swap.expectedOutput} ${toAsset.symbol}`} />
+              <Row label="Status" value={STATUS_LABELS[status] || status} />
             </div>
           </div>
         </div>
@@ -259,7 +303,7 @@ export function Swap() {
     )
   }
 
-  // Quote view — show quote details and confirm button
+  // --- Quote review ---
   if (quote) {
     const route = quote.recommendedRoute
     return (
@@ -279,30 +323,29 @@ export function Swap() {
             </div>
 
             <div class="space-y-4">
-              <div class="flex items-center justify-between p-4 rounded-bubble" style={{ backgroundColor: dir.color + '10' }}>
+              <div class="flex items-center justify-between p-4 rounded-bubble bg-gray-50">
                 <div class="flex items-center gap-2">
-                  <CryptoIcon symbol={dir.from} size={32} />
+                  <CryptoIcon symbol={fromAsset.symbol} networkId={fromAsset.networkId} size={32} />
                   <div>
                     <p class="font-fun font-bold text-lg">{route.sourceAmount}</p>
-                    <p class="font-fun text-xs text-gray-400">{dir.from}</p>
+                    <p class="font-fun text-xs text-gray-400">{fromAsset.symbol} ({fromAsset.chain})</p>
                   </div>
                 </div>
                 <span class="font-fun text-xl text-gray-400">→</span>
                 <div class="flex items-center gap-2">
-                  <CryptoIcon symbol={dir.to} size={32} />
+                  <CryptoIcon symbol={toAsset.symbol} networkId={toAsset.networkId} size={32} />
                   <div>
                     <p class="font-fun font-bold text-lg text-green-600">{route.expectedOutput}</p>
-                    <p class="font-fun text-xs text-gray-400">{dir.to}</p>
+                    <p class="font-fun text-xs text-gray-400">{toAsset.symbol} ({toAsset.chain})</p>
                   </div>
                 </div>
               </div>
 
               <div class="bg-gray-50 rounded-bubble p-3 space-y-2">
                 <Row label="Provider" value={route.provider} />
-                <Row label="Route" value={route.routeLabel} />
-                <Row label="Min output" value={`${route.minimumOutput} ${dir.to}`} />
-                <Row label="Network fees" value={route.networkFees} />
-                <Row label="Slippage" value={`${route.slippagePercent}%`} />
+                <Row label="Min output" value={`${route.minimumOutput} ${toAsset.symbol}`} />
+                {route.networkFees && <Row label="Network fees" value={route.networkFees} />}
+                {route.protocolFees && <Row label="Protocol fees" value={route.protocolFees} />}
                 <Row label="Est. time" value={`~${Math.ceil(route.estimatedTimeSeconds / 60)} min`} />
                 {quote.protectionScore != null && (
                   <Row
@@ -348,7 +391,7 @@ export function Swap() {
     )
   }
 
-  // Default — direction + amount input
+  // --- Default: asset selection + amount input ---
   return (
     <div class="min-h-screen pb-20">
       <Header />
@@ -365,68 +408,68 @@ export function Swap() {
           <div class="text-center mb-6">
             <span class="text-5xl block mb-2">🔄</span>
             <h2 class="font-fun text-2xl font-bold text-gradient-fun">Swap</h2>
-            <p class="font-body text-sm text-gray-500">Cross-chain swaps via Cross2Chain</p>
+            <p class="font-body text-sm text-gray-500">Cross-chain swaps via Chainflip</p>
           </div>
 
           <div class="space-y-4">
-            <div class="flex gap-2">
-              {DIRECTIONS.map(d => (
-                <button
-                  key={d.key}
-                  class={`flex-1 py-3 rounded-bubble font-fun text-sm font-bold transition-all flex items-center justify-center gap-2
-                    ${direction === d.key
-                      ? 'text-white shadow-candy'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                    }`}
-                  style={direction === d.key ? { backgroundColor: d.color } : {}}
-                  onClick={() => { setDirection(d.key); setQuote(null); setError('') }}
-                >
-                  <CryptoIcon symbol={d.from} size={20} />
-                  →
-                  <CryptoIcon symbol={d.to} size={20} />
-                </button>
-              ))}
-            </div>
-
+            {/* From */}
             <div class="bg-pink-50 rounded-bubble p-4 border-2 border-dashed border-pink-200">
-              <p class="font-fun text-xs text-pink-400 mb-2 flex items-center gap-1.5">
-                <CryptoIcon symbol={dir.from} size={16} /> You send ({dir.from})
-              </p>
+              <div class="flex items-center justify-between mb-3">
+                <p class="font-fun text-xs text-pink-400">You send</p>
+                <button
+                  class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-sm hover:shadow-md transition-all border border-gray-200"
+                  onClick={() => setPicking('from')}
+                >
+                  <CryptoIcon symbol={fromAsset.symbol} networkId={fromAsset.networkId} size={20} />
+                  <span class="font-fun font-bold text-sm">{fromAsset.symbol}</span>
+                  <span class="font-body text-xs text-gray-400">{fromAsset.chain}</span>
+                  <span class="text-gray-300">▾</span>
+                </button>
+              </div>
               <input
                 type="number"
                 class="input-fun text-lg"
-                placeholder={`${limits.min} — ${limits.max}`}
+                placeholder="Amount..."
                 value={amount}
                 onInput={e => setAmount(e.target.value)}
                 step="any"
-                min={limits.min}
-                max={limits.max}
               />
-              {amount && !amountValid && (
-                <p class="font-fun text-xs text-red-400 mt-1">
-                  Amount must be between {limits.min} and {limits.max} {dir.from}
-                </p>
-              )}
             </div>
 
+            {/* Flip button */}
             <div class="flex justify-center">
-              <div class="w-10 h-10 rounded-full text-white flex items-center justify-center font-fun text-xl shadow-fun" style={{ backgroundColor: dir.color }}>
-                ↓
-              </div>
+              <button
+                class="w-10 h-10 rounded-full bg-candy-purple text-white flex items-center justify-center font-fun text-xl shadow-fun hover:scale-110 transition-transform"
+                onClick={handleFlip}
+                title="Swap direction"
+              >
+                ↕
+              </button>
             </div>
 
+            {/* To */}
             <div class="bg-blue-50 rounded-bubble p-4 border-2 border-dashed border-blue-200">
-              <p class="font-fun text-xs text-blue-400 mb-1 flex items-center gap-1.5">
-                <CryptoIcon symbol={dir.to} size={16} /> You receive ({dir.to})
-              </p>
+              <div class="flex items-center justify-between mb-1">
+                <p class="font-fun text-xs text-blue-400">You receive</p>
+                <button
+                  class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-sm hover:shadow-md transition-all border border-gray-200"
+                  onClick={() => setPicking('to')}
+                >
+                  <CryptoIcon symbol={toAsset.symbol} networkId={toAsset.networkId} size={20} />
+                  <span class="font-fun font-bold text-sm">{toAsset.symbol}</span>
+                  <span class="font-body text-xs text-gray-400">{toAsset.chain}</span>
+                  <span class="text-gray-300">▾</span>
+                </button>
+              </div>
               <p class="font-fun text-sm text-gray-400">
                 Get a quote to see the estimated output
               </p>
             </div>
 
+            {/* Addresses */}
             <div class="bg-gray-50 rounded-bubble p-3 space-y-1">
-              <Row label="From address" value={truncAddr(fromAddr)} mono />
-              <Row label="To address" value={truncAddr(toAddr)} mono />
+              <Row label={`From (${fromAsset.chain})`} value={truncAddr(fromAddr)} mono />
+              <Row label={`To (${toAsset.chain})`} value={truncAddr(toAddr)} mono />
             </div>
 
             {error && <p class="font-fun text-sm text-red-500 font-bold">{error}</p>}
@@ -434,7 +477,7 @@ export function Swap() {
             <button
               class="btn-candy-purple w-full text-lg"
               onClick={handleGetQuote}
-              disabled={!amountValid || loading}
+              disabled={!amount || parseFloat(amount) <= 0 || loading}
             >
               {loading ? '🔄 Getting quote...' : '💱 Get Quote'}
             </button>
@@ -460,7 +503,6 @@ function SwapStatusBar({ status }) {
     'deposit_detected',
     'confirming_source',
     'swap_executing',
-    'destination_prepared',
     'completed',
   ]
   const current = steps.indexOf(status)

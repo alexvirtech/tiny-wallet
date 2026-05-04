@@ -1,14 +1,19 @@
-const API = 'https://api.cross2chain.com'
+const API = import.meta.env.VITE_CROSS2CHAIN_API_URL || 'https://api.cross2chain.com'
 
-export const SWAP_PAIRS = {
-  BTC_TO_ETH: { fromAsset: 'BTC.BTC', toAsset: 'ETH.ETH', fromNetwork: 'bitcoin', toNetwork: 'ethereum' },
-  ETH_TO_BTC: { fromAsset: 'ETH.ETH', toAsset: 'BTC.BTC', fromNetwork: 'ethereum', toNetwork: 'bitcoin' },
-}
-
-export const LIMITS = {
-  BTC: { min: 0.0001, max: 10 },
-  ETH: { min: 0.01, max: 100 },
-}
+export const SWAP_ASSETS = [
+  { id: 'BTC.BTC', symbol: 'BTC', name: 'Bitcoin', chain: 'Bitcoin', networkId: 'bitcoin', decimals: 8 },
+  { id: 'ETH.ETH', symbol: 'ETH', name: 'Ether', chain: 'Ethereum', networkId: 'ethereum', decimals: 18 },
+  { id: 'ETH.USDC', symbol: 'USDC', name: 'USD Coin', chain: 'Ethereum', networkId: 'ethereum', decimals: 6 },
+  { id: 'ETH.USDT', symbol: 'USDT', name: 'Tether', chain: 'Ethereum', networkId: 'ethereum', decimals: 6 },
+  { id: 'ETH.FLIP', symbol: 'FLIP', name: 'Chainflip', chain: 'Ethereum', networkId: 'ethereum', decimals: 18 },
+  { id: 'ETH.WBTC', symbol: 'WBTC', name: 'Wrapped BTC', chain: 'Ethereum', networkId: 'ethereum', decimals: 8 },
+  { id: 'ARB.ETH', symbol: 'ETH', name: 'Ether', chain: 'Arbitrum', networkId: 'arbitrum', decimals: 18 },
+  { id: 'ARB.USDC', symbol: 'USDC', name: 'USD Coin', chain: 'Arbitrum', networkId: 'arbitrum', decimals: 6 },
+  { id: 'ARB.USDT', symbol: 'USDT', name: 'Tether', chain: 'Arbitrum', networkId: 'arbitrum', decimals: 6 },
+  { id: 'SOL.SOL', symbol: 'SOL', name: 'Solana', chain: 'Solana', networkId: 'solana', decimals: 9 },
+  { id: 'SOL.USDC', symbol: 'USDC', name: 'USD Coin', chain: 'Solana', networkId: 'solana', decimals: 6 },
+  { id: 'SOL.USDT', symbol: 'USDT', name: 'Tether', chain: 'Solana', networkId: 'solana', decimals: 6 },
+]
 
 export const TERMINAL_STATUSES = ['completed', 'failed', 'refunded']
 
@@ -17,10 +22,24 @@ export const STATUS_LABELS = {
   deposit_detected: 'Deposit detected',
   confirming_source: 'Confirming on source chain',
   swap_executing: 'Swap in progress',
-  destination_prepared: 'Funds arriving',
   completed: 'Completed',
   failed: 'Failed',
   refunded: 'Refunded',
+}
+
+const CHAIN_COLORS = {
+  Bitcoin: '#F7931A',
+  Ethereum: '#627EEA',
+  Arbitrum: '#12AAFF',
+  Solana: '#9945FF',
+}
+
+export function getAsset(id) {
+  return SWAP_ASSETS.find(a => a.id === id)
+}
+
+export function getChainColor(chain) {
+  return CHAIN_COLORS[chain] || '#888'
 }
 
 async function apiCall(path, options = {}) {
@@ -29,33 +48,25 @@ async function apiCall(path, options = {}) {
     ...options,
   })
   const data = await res.json()
-  if (!res.ok) throw new Error(data.error || `API error: ${res.status}`)
+  if (!res.ok) throw new Error(data.error || data.errors?.[0] || `API error: ${res.status}`)
   return data
 }
 
 export async function getQuotes({ fromAsset, toAsset, amount, destinationAddress, refundAddress }) {
-  return apiCall('/v1/quotes', {
+  return apiCall('/api/v1/quotes', {
     method: 'POST',
     body: JSON.stringify({ fromAsset, toAsset, amount, destinationAddress, refundAddress }),
   })
 }
 
 export async function createSwap(quote, destinationAddress, refundAddress) {
-  return apiCall('/v1/swaps', {
+  return apiCall('/api/v1/swaps', {
     method: 'POST',
     body: JSON.stringify({ quote, destinationAddress, refundAddress }),
   })
 }
 
 export async function getSwapStatus(swapId) {
-  return apiCall(`/v1/swaps/${swapId}/status`)
-}
-
-export async function checkHealth() {
-  try {
-    const data = await apiCall('/v1/health')
-    return data.status === 'ok'
-  } catch {
-    return false
-  }
+  const data = await apiCall(`/api/v1/swaps/${swapId}`)
+  return data.swap
 }

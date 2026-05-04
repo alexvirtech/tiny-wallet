@@ -15,6 +15,8 @@ export const icons = {
   WETH: `${BASE}/2518/small/weth.png`,
   CAKE: `${BASE}/12632/small/pancakeswap-cake-logo_%281%29.png`,
   JUP: `${BASE}/34188/small/jup.png`,
+  FLIP: `${BASE}/28791/small/chainflip.png`,
+  DOT: `${BASE}/12171/small/polkadot.png`,
 }
 
 const networkIconOverride = {
