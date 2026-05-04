@@ -43,12 +43,19 @@ export function Swap() {
   const usdEstimate = formatUsd(fromAsset.symbol, amount, prices)
 
   const handlePick = (side, assetId) => {
+    const picked = getAsset(assetId)
     if (side === 'from') {
-      if (assetId === toId) setToId(fromId)
       setFromId(assetId)
+      if (toAsset.chain === picked.chain) {
+        const alt = SWAP_ASSETS.find(a => a.chain !== picked.chain)
+        if (alt) setToId(alt.id)
+      }
     } else {
-      if (assetId === fromId) setFromId(toId)
       setToId(assetId)
+      if (fromAsset.chain === picked.chain) {
+        const alt = SWAP_ASSETS.find(a => a.chain !== picked.chain)
+        if (alt) setFromId(alt.id)
+      }
     }
     setPicking(null)
     setQuote(null)
@@ -158,7 +165,7 @@ export function Swap() {
 
   // --- Asset picker ---
   if (picking) {
-    const exclude = picking === 'from' ? toId : fromId
+    const otherAsset = picking === 'from' ? toAsset : fromAsset
     return (
       <div class="min-h-screen pb-20">
         <Header />
@@ -173,26 +180,32 @@ export function Swap() {
             <h2 class="font-fun text-xl font-bold text-gradient-fun text-center mb-4">
               Select {picking === 'from' ? 'Source' : 'Destination'} Asset
             </h2>
+            <p class="font-body text-xs text-gray-400 text-center mb-3">
+              Cross-chain swaps only — pick an asset on a different chain
+            </p>
             <div class="space-y-1">
               {SWAP_ASSETS.map(a => {
                 const selected = picking === 'from' ? fromId === a.id : toId === a.id
+                const sameChain = !selected && a.chain === otherAsset.chain
+                const disabled = sameChain || a.id === otherAsset.id
                 return (
                   <button
                     key={a.id}
                     class={`w-full flex items-center gap-3 p-3 rounded-bubble transition-all ${
                       selected
                         ? 'bg-candy-purple/10 border-2 border-candy-purple'
-                        : a.id === exclude
+                        : disabled
                           ? 'opacity-30 cursor-not-allowed'
                           : 'hover:bg-gray-50 border-2 border-transparent'
                     }`}
-                    onClick={() => a.id !== exclude && handlePick(picking, a.id)}
-                    disabled={a.id === exclude}
+                    onClick={() => !disabled && handlePick(picking, a.id)}
+                    disabled={disabled}
                   >
                     <CryptoIcon symbol={a.symbol} size={28} />
                     <div class="text-left flex-1">
                       <span class="font-fun font-bold text-sm">{a.symbol}</span>
                       <span class="font-body text-xs text-gray-400 ml-2">{a.name}</span>
+                      {sameChain && <span class="font-body text-xs text-red-400 ml-1">(same chain)</span>}
                     </div>
                     <span
                       class="font-fun text-xs px-2 py-0.5 rounded-full text-white"
@@ -525,12 +538,19 @@ export function Swap() {
               <Row label={`To (${toAsset.chain})`} value={truncAddr(toAddr)} mono />
             </div>
 
+            {fromAsset.chain === toAsset.chain && (
+              <Warning
+                type="warning"
+                message="Same-chain swaps are not supported. Please select assets on different chains."
+              />
+            )}
+
             {error && <p class="font-fun text-sm text-red-500 font-bold">{error}</p>}
 
             <button
               class="btn-candy-purple w-full text-lg"
               onClick={handleGetQuote}
-              disabled={!amount || parseFloat(amount) <= 0 || loading}
+              disabled={!amount || parseFloat(amount) <= 0 || loading || fromAsset.chain === toAsset.chain}
             >
               {loading ? '🔄 Getting quote...' : '💱 Get Quote'}
             </button>
