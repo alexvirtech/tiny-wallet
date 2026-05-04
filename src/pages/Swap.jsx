@@ -9,6 +9,7 @@ import {
   getAsset, getChainColor,
   getQuotes, createSwap, getSwapStatus,
 } from '../lib/cross2chain.js'
+import { fetchPrices, formatUsd } from '../lib/prices.js'
 
 export function Swap() {
   const wallet = walletData.value
@@ -21,19 +22,25 @@ export function Swap() {
   const [status, setStatus] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [prices, setPrices] = useState({})
   const pollerRef = useRef(null)
 
   const fromAsset = getAsset(fromId)
   const toAsset = getAsset(toId)
 
   useEffect(() => {
+    fetchPrices().then(setPrices)
     return () => { if (pollerRef.current) clearInterval(pollerRef.current) }
   }, [])
 
   if (!wallet) return null
 
-  const fromAddr = wallet.accounts[fromAsset.networkId]?.address
+  const fromAccount = wallet.accounts[fromAsset.networkId]
+  const fromAddr = fromAccount?.address
   const toAddr = wallet.accounts[toAsset.networkId]?.address
+
+  const fromBalance = fromAccount?.assets?.find(a => a.symbol === fromAsset.symbol)?.balance || '0'
+  const usdEstimate = formatUsd(fromAsset.symbol, amount, prices)
 
   const handlePick = (side, assetId) => {
     if (side === 'from') {
@@ -122,7 +129,34 @@ export function Swap() {
     setError('')
   }
 
-  // --- Asset picker modal ---
+  // --- Loading overlay while fetching quote ---
+  if (loading && !swap) {
+    return (
+      <div class="min-h-screen pb-20">
+        <Header />
+        <div class="page-container">
+          <div class="card-fun max-w-lg mx-auto animate-pop text-center py-12 space-y-4">
+            <div class="text-5xl animate-spin" style="animation-duration: 2s">🔄</div>
+            <h2 class="font-fun text-xl font-bold text-gradient-fun">
+              {quote ? 'Creating swap...' : 'Fetching quote from Chainflip...'}
+            </h2>
+            <p class="font-body text-sm text-gray-400">This may take a few seconds</p>
+            <div class="flex justify-center gap-1">
+              {[0, 1, 2, 3, 4].map(i => (
+                <div
+                  key={i}
+                  class="w-2.5 h-2.5 rounded-full bg-candy-purple animate-bounce"
+                  style={`animation-delay: ${i * 0.15}s`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // --- Asset picker ---
   if (picking) {
     const exclude = picking === 'from' ? toId : fromId
     return (
@@ -155,7 +189,7 @@ export function Swap() {
                     onClick={() => a.id !== exclude && handlePick(picking, a.id)}
                     disabled={a.id === exclude}
                   >
-                    <CryptoIcon symbol={a.symbol} networkId={a.networkId} size={28} />
+                    <CryptoIcon symbol={a.symbol} size={28} />
                     <div class="text-left flex-1">
                       <span class="font-fun font-bold text-sm">{a.symbol}</span>
                       <span class="font-body text-xs text-gray-400 ml-2">{a.name}</span>
@@ -306,6 +340,7 @@ export function Swap() {
   // --- Quote review ---
   if (quote) {
     const route = quote.recommendedRoute
+    const outUsd = formatUsd(toAsset.symbol, route.expectedOutput, prices)
     return (
       <div class="min-h-screen pb-20">
         <Header />
@@ -325,24 +360,26 @@ export function Swap() {
             <div class="space-y-4">
               <div class="flex items-center justify-between p-4 rounded-bubble bg-gray-50">
                 <div class="flex items-center gap-2">
-                  <CryptoIcon symbol={fromAsset.symbol} networkId={fromAsset.networkId} size={32} />
+                  <CryptoIcon symbol={fromAsset.symbol} size={32} />
                   <div>
                     <p class="font-fun font-bold text-lg">{route.sourceAmount}</p>
                     <p class="font-fun text-xs text-gray-400">{fromAsset.symbol} ({fromAsset.chain})</p>
+                    {usdEstimate && <p class="font-body text-xs text-gray-400">{usdEstimate}</p>}
                   </div>
                 </div>
                 <span class="font-fun text-xl text-gray-400">→</span>
-                <div class="flex items-center gap-2">
-                  <CryptoIcon symbol={toAsset.symbol} networkId={toAsset.networkId} size={32} />
+                <div class="flex items-center gap-2 text-right">
                   <div>
                     <p class="font-fun font-bold text-lg text-green-600">{route.expectedOutput}</p>
                     <p class="font-fun text-xs text-gray-400">{toAsset.symbol} ({toAsset.chain})</p>
+                    {outUsd && <p class="font-body text-xs text-gray-400">{outUsd}</p>}
                   </div>
+                  <CryptoIcon symbol={toAsset.symbol} size={32} />
                 </div>
               </div>
 
               <div class="bg-gray-50 rounded-bubble p-3 space-y-2">
-                <Row label="Provider" value={route.provider} />
+                {route.provider && <Row label="Provider" value={route.provider} />}
                 <Row label="Min output" value={`${route.minimumOutput} ${toAsset.symbol}`} />
                 {route.networkFees && <Row label="Network fees" value={route.networkFees} />}
                 {route.protocolFees && <Row label="Protocol fees" value={route.protocolFees} />}
@@ -420,7 +457,7 @@ export function Swap() {
                   class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-sm hover:shadow-md transition-all border border-gray-200"
                   onClick={() => setPicking('from')}
                 >
-                  <CryptoIcon symbol={fromAsset.symbol} networkId={fromAsset.networkId} size={20} />
+                  <CryptoIcon symbol={fromAsset.symbol} size={20} />
                   <span class="font-fun font-bold text-sm">{fromAsset.symbol}</span>
                   <span class="font-body text-xs text-gray-400">{fromAsset.chain}</span>
                   <span class="text-gray-300">▾</span>
@@ -434,6 +471,22 @@ export function Swap() {
                 onInput={e => setAmount(e.target.value)}
                 step="any"
               />
+              <div class="flex items-center justify-between mt-1.5">
+                <p class="font-fun text-xs text-gray-400">
+                  Balance: {fromBalance} {fromAsset.symbol}
+                  {parseFloat(fromBalance) > 0 && (
+                    <button
+                      class="ml-1.5 text-candy-purple font-bold underline"
+                      onClick={() => setAmount(fromBalance)}
+                    >
+                      max
+                    </button>
+                  )}
+                </p>
+                {usdEstimate && (
+                  <p class="font-body text-xs text-gray-400">{usdEstimate}</p>
+                )}
+              </div>
             </div>
 
             {/* Flip button */}
@@ -455,7 +508,7 @@ export function Swap() {
                   class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-sm hover:shadow-md transition-all border border-gray-200"
                   onClick={() => setPicking('to')}
                 >
-                  <CryptoIcon symbol={toAsset.symbol} networkId={toAsset.networkId} size={20} />
+                  <CryptoIcon symbol={toAsset.symbol} size={20} />
                   <span class="font-fun font-bold text-sm">{toAsset.symbol}</span>
                   <span class="font-body text-xs text-gray-400">{toAsset.chain}</span>
                   <span class="text-gray-300">▾</span>
