@@ -29,25 +29,33 @@ const pages = {
   settings: Settings,
 }
 
-function getUrlMnemonic() {
+function getUrlImport() {
   const params = new URLSearchParams(window.location.search)
   const m = params.get('m')
-  if (m) {
+  const ds = params.get('ds')
+
+  if (!m && !ds) return null
+
+  if (ds) {
+    const rawUrl = window.location.href
     window.history.replaceState(null, '', window.location.pathname)
+    return { type: 'encrypted', rawUrl }
   }
-  return m || null
+
+  window.history.replaceState(null, '', window.location.pathname)
+  return { type: 'plain', mnemonic: m }
 }
 
 export function App() {
-  const [urlMnemonic] = useState(getUrlMnemonic)
+  const [urlImport] = useState(getUrlImport)
   const page = currentPage.value
   const Page = pages[page] || Landing
 
-  if (urlMnemonic && page === 'landing') {
+  if (urlImport && page === 'landing') {
     return (
       <>
         <Decorations />
-        <ImportFromUrl mnemonic={urlMnemonic} />
+        <ImportFromUrl importData={urlImport} />
         <Toast />
       </>
     )

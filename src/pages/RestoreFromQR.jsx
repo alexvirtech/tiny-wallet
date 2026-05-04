@@ -112,13 +112,21 @@ export function RestoreFromQR() {
 
     const img = new Image()
     img.onload = () => {
+      const MAX = 1024
+      let w = img.width
+      let h = img.height
+      if (w > MAX || h > MAX) {
+        const scale = MAX / Math.max(w, h)
+        w = Math.round(w * scale)
+        h = Math.round(h * scale)
+      }
       const canvas = document.createElement('canvas')
-      canvas.width = img.width
-      canvas.height = img.height
+      canvas.width = w
+      canvas.height = h
       const ctx = canvas.getContext('2d')
-      ctx.drawImage(img, 0, 0)
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const code = jsQR(imageData.data, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0, w, h)
+      const imageData = ctx.getImageData(0, 0, w, h)
+      const code = jsQR(imageData.data, w, h)
       URL.revokeObjectURL(img.src)
 
       if (code) {
