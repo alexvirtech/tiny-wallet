@@ -1,10 +1,28 @@
 import CryptoJS from 'crypto-js'
+import { honeyDecrypt } from '@norionsoft/m2qr'
+
+function base64urlDecode(str) {
+  const padded = str.replace(/-/g, '+').replace(/_/g, '/')
+  const pad = padded.length % 4
+  const b64 = pad ? padded + '='.repeat(4 - pad) : padded
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+}
 
 export function parseQrData(raw) {
   try {
     const url = new URL(raw)
+
+    // Fragment-based format: /o/v2#ds=...
+    if (url.hash) {
+      const fragParams = new URLSearchParams(url.hash.slice(1))
+      const ds = fragParams.get('ds')
+      if (ds) return { version: 4, ds }
+    }
+
     const ds = url.searchParams.get('ds') ?? ''
     const v = url.searchParams.get('v')
+
+    if (v === '4') return { version: 4, ds }
 
     if (v === '3') {
       return {
@@ -53,7 +71,21 @@ export function decryptV2(ciphertext, password, pepper) {
   return decryptV1(ciphertext, password + ':' + pepper)
 }
 
-export function decryptQrPayload(envelope, password) {
+export async function decryptV4(ds, password) {
+  try {
+    const data = base64urlDecode(ds)
+    const mnemonic = await honeyDecrypt(data, password)
+    return mnemonic
+  } catch {
+    return null
+  }
+}
+
+export async function decryptQrPayload(envelope, password) {
+  if (envelope.version === 4) {
+    return decryptV4(envelope.ds, password)
+  }
+
   if (envelope.version === 1 || envelope.version === 0) {
     return decryptV1(envelope.ds, password)
   }

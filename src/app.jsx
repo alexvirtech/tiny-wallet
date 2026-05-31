@@ -32,14 +32,20 @@ const pages = {
 function getUrlImport() {
   const params = new URLSearchParams(window.location.search)
   const m = params.get('m')
-  const ds = params.get('ds')
+  let ds = params.get('ds')
+
+  // Support fragment-based format: #ds=...
+  if (!ds && window.location.hash) {
+    const fragParams = new URLSearchParams(window.location.hash.slice(1))
+    ds = fragParams.get('ds')
+  }
 
   if (!m && !ds) return null
 
   if (ds) {
     const rawUrl = window.location.href
     window.history.replaceState(null, '', window.location.pathname)
-    return { type: 'encrypted', rawUrl }
+    return { type: 'encrypted', rawUrl, ds }
   }
 
   window.history.replaceState(null, '', window.location.pathname)

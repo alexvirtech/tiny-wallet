@@ -19,8 +19,10 @@ export function ImportFromUrl({ importData }) {
     setLoading(true)
     setError('')
     try {
-      const envelope = parseQrData(importData.rawUrl)
-      const result = decryptQrPayload(envelope, qrPassword)
+      const envelope = importData.ds
+        ? { version: 4, ds: importData.ds }
+        : parseQrData(importData.rawUrl)
+      const result = await decryptQrPayload(envelope, qrPassword)
 
       if (!result) {
         setError('Wrong password or unrecognized QR format.')

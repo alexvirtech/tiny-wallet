@@ -11,6 +11,7 @@
   "dependencies": {
     "@noble/curves": "^2.2.0",
     "@noble/hashes": "^2.2.0",
+    "@norionsoft/m2qr": "^0.3.0",
     "@preact/signals": "^2.9.0",
     "@scure/base": "^2.2.0",
     "@scure/bip32": "^2.2.0",
